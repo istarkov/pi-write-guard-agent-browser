@@ -1,0 +1,36 @@
+{
+	"name": "pi-write-guard",
+	"version": "0.1.0",
+	"description": "macOS Seatbelt write-guard for Pi shell commands: read anywhere, write only inside allowed roots.",
+	"type": "module",
+	"license": "MIT",
+	"author": "istarkov",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/istarkov/pi-write-guard-agent-browser.git"
+	},
+	"homepage": "https://github.com/istarkov/pi-write-guard-agent-browser#readme",
+	"bugs": {
+		"url": "https://github.com/istarkov/pi-write-guard-agent-browser/issues"
+	},
+	"keywords": ["pi-package", "pi", "extension", "sandbox", "seatbelt", "macos"],
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"files": ["extensions/write-guard", "README.md", "LICENSE"],
+	"pi": {
+		"extensions": ["./extensions/write-guard/index.ts"]
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "*"
+	},
+	"scripts": {
+		"test": "node --experimental-strip-types --test tests/*.test.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@earendil-works/pi-coding-agent": "1.4.0",
+		"@types/node": "^26.6.6",
+		"typescript": "^7.0.2"
+	}
+}
