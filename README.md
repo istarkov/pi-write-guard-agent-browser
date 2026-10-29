@@ -4,7 +4,9 @@ A Pi extension for macOS: shell commands can **read anywhere but write only insi
 
 A plain `agent-browser` call runs **outside** the sandbox, because Chromium cannot initialize its own sandbox nested inside ours (macOS rejects it with `forbidden-sandbox-reinit`) and would crash.
 
-Write roots: the session working directory, `~/Downloads`, `/tmp` and `$TMPDIR`, package-manager caches (`~/.npm`, `~/.bun`, `~/.cache`, `~/.cargo`, `~/Library/Caches`, `~/Library/pnpm`), and `~/.agent-browser`. Edit `defaultWriteRoots()` in [`extensions/write-guard/policy.ts`](extensions/write-guard/policy.ts) to change them.
+Write roots: the session working directory, Pi's agent directory (`~/.pi/agent`, or `$PI_CODING_AGENT_DIR`), `~/Downloads`, `/tmp` and `$TMPDIR`, package-manager caches (`~/.npm`, `~/.bun`, `~/.cache`, `~/.cargo`, `~/Library/Caches`, `~/Library/pnpm`), and `~/.agent-browser`. Edit `defaultWriteRoots()` in [`extensions/write-guard/policy.ts`](extensions/write-guard/policy.ts) to change them.
+
+Also bundles `openrouter-web-search`: injects OpenRouter's server-side `openrouter:web_search` tool into outgoing requests (`PI_OPENROUTER_WEB_SEARCH=0` disables it).
 
 ## Install
 

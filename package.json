@@ -17,9 +17,12 @@
 	"engines": {
 		"node": ">=22.19.0"
 	},
-	"files": ["extensions/write-guard", "README.md", "LICENSE"],
+	"files": ["extensions/write-guard", "extensions/openrouter-web-search", "README.md", "LICENSE"],
 	"pi": {
-		"extensions": ["./extensions/write-guard/index.ts"]
+		"extensions": [
+			"./extensions/write-guard/index.ts",
+			"./extensions/openrouter-web-search/index.ts"
+		]
 	},
 	"peerDependencies": {
 		"@earendil-works/pi-coding-agent": "*"

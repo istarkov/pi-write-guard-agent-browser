@@ -51,6 +51,37 @@ test("defaultWriteRoots always includes cwd and temp", () => {
 	assert.ok(roots.some((root) => root.endsWith("/tmp/t") || root === "/tmp/t"));
 });
 
+test("defaultWriteRoots includes Pi's agent dir and honors the override", () => {
+	const roots = defaultWriteRoots({
+		cwd: "/Users/x/proj",
+		home: "/Users/x",
+		tmp: "/tmp/t",
+		agentDir: "/Users/x/.pi/agent",
+	});
+	assert.ok(roots.includes("/Users/x/.pi/agent"));
+
+	const custom = defaultWriteRoots({
+		cwd: "/Users/x/proj",
+		home: "/Users/x",
+		tmp: "/tmp/t",
+		agentDir: "/Users/x/custom-agent",
+	});
+	assert.ok(custom.includes("/Users/x/custom-agent"));
+	assert.ok(!custom.includes("/Users/x/.pi/agent"));
+});
+
+test("defaultWriteRoots defaults agentDir from PI_CODING_AGENT_DIR", () => {
+	const previous = process.env.PI_CODING_AGENT_DIR;
+	process.env.PI_CODING_AGENT_DIR = "/Users/x/env-agent";
+	try {
+		const roots = defaultWriteRoots({ cwd: "/Users/x/proj", home: "/Users/x", tmp: "/tmp/t" });
+		assert.ok(roots.includes("/Users/x/env-agent"));
+	} finally {
+		if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+		else process.env.PI_CODING_AGENT_DIR = previous;
+	}
+});
+
 test("canonicalize resolves a new path through its existing ancestor", () => {
 	const target = join(tmpdir(), "wg-nope", "file.txt");
 	assert.equal(canonicalize(target), join(realpathSync(tmpdir()), "wg-nope", "file.txt"));

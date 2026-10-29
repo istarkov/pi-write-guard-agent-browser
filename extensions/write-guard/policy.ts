@@ -12,6 +12,8 @@ export interface WriteRootsOptions {
 	cwd: string;
 	home?: string;
 	tmp?: string;
+	/** Pi's global agent directory (settings, extensions, models, installs). */
+	agentDir?: string;
 }
 
 /**
@@ -30,12 +32,19 @@ export function canonicalize(path: string): string {
 }
 
 /**
- * Roots where shell commands may write: the session cwd, downloads, temp, and
- * the package-manager caches that would otherwise break sandboxed installs.
+ * Roots where shell commands may write: the session cwd, Pi's agent directory
+ * (global extensions, settings, models, installs), downloads, temp, and the
+ * package-manager caches that would otherwise break sandboxed installs.
  */
-export function defaultWriteRoots({ cwd, home = homedir(), tmp = tmpdir() }: WriteRootsOptions): string[] {
+export function defaultWriteRoots({
+	cwd,
+	home = homedir(),
+	tmp = tmpdir(),
+	agentDir = process.env.PI_CODING_AGENT_DIR ?? resolve(home, ".pi", "agent"),
+}: WriteRootsOptions): string[] {
 	return [
 		cwd,
+		agentDir,
 		resolve(home, "Downloads"),
 		"/tmp",
 		tmp,
