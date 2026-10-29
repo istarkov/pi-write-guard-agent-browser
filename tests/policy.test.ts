@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
 import {
 	buildProfile,
+	canonicalize,
 	defaultWriteRoots,
 	escapeProfilePath,
 	isBrowserInvocation,
@@ -45,6 +49,16 @@ test("defaultWriteRoots always includes cwd and temp", () => {
 	const roots = defaultWriteRoots({ cwd: "/Users/x/proj", home: "/Users/x", tmp: "/tmp/t" });
 	assert.ok(roots.includes("/Users/x/proj"));
 	assert.ok(roots.some((root) => root.endsWith("/tmp/t") || root === "/tmp/t"));
+});
+
+test("canonicalize resolves a new path through its existing ancestor", () => {
+	const target = join(tmpdir(), "wg-nope", "file.txt");
+	assert.equal(canonicalize(target), join(realpathSync(tmpdir()), "wg-nope", "file.txt"));
+});
+
+test("isWritable accepts a new file under a canonicalized root", () => {
+	const root = canonicalize(tmpdir());
+	assert.equal(isWritable([root], canonicalize(join(tmpdir(), "wg-new", "f"))), true);
 });
 
 test("shellQuote wraps and escapes single quotes", () => {

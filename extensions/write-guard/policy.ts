@@ -5,7 +5,7 @@
 
 import { realpathSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 export interface WriteRootsOptions {
 	/** Session working directory: the one place writes are always allowed. */
@@ -14,12 +14,18 @@ export interface WriteRootsOptions {
 	tmp?: string;
 }
 
-/** Resolve to the kernel's view of a path (macOS: /tmp -> /private/tmp). */
+/**
+ * Resolve to the kernel's view of a path (macOS: /tmp -> /private/tmp). A path
+ * that does not exist yet is resolved through its nearest existing ancestor, so
+ * writing a new file under an aliased root (/tmp, $TMPDIR) is not misjudged.
+ */
 export function canonicalize(path: string): string {
 	try {
 		return realpathSync(path);
 	} catch {
-		return path;
+		const parent = dirname(path);
+		if (parent === path) return path;
+		return join(canonicalize(parent), basename(path));
 	}
 }
 
