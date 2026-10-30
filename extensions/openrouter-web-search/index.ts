@@ -1,38 +1,25 @@
-// Inject OpenRouter's server-side web search tool into outgoing requests.
+// Inject OpenRouter's server-side tools into outgoing requests.
 //
-// OpenRouter runs `openrouter:web_search` on its side, so the model can search
-// the web on demand (0-N times per request) without any client-side tool code.
-// Docs: https://openrouter.ai/docs/guides/features/server-tools/web-search
+// OpenRouter runs these tools on its side, so the model can use them on demand
+// (0-N times per request) without any client-side tool code:
+// - `openrouter:web_search` — web search
+// - `openrouter:datetime` — current date/time (optional IANA timezone)
 //
-// Disable with PI_OPENROUTER_WEB_SEARCH=0.
+// Docs:
+// - https://openrouter.ai/docs/guides/features/server-tools/web-search
+// - https://openrouter.ai/docs/guides/features/server-tools/datetime
+//
+// ENV:
+// - PI_OPENROUTER_WEB_SEARCH=0 — disable web search
+// - PI_OPENROUTER_DATETIME=0 — disable datetime
+// - PI_OPENROUTER_DATETIME_TIMEZONE=<IANA zone> — pass timezone to datetime
+//   (default: UTC, tool sent without parameters)
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const SERVER_TOOL = { type: "openrouter:web_search" } as const;
-
-function isOpenRouter(model: { provider?: string; baseUrl?: string } | undefined): boolean {
-	if (!model) return false;
-	return model.provider === "openrouter" || (model.baseUrl ?? "").includes("openrouter.ai");
-}
+import { applyServerTools } from "./server-tools.ts";
 
 export default function (pi: ExtensionAPI) {
 	pi.on("before_provider_request", (event, ctx) => {
-		if (process.env.PI_OPENROUTER_WEB_SEARCH === "0") return;
-		if (!isOpenRouter(ctx.model)) return;
-
-		const body = event.payload;
-		if (!body || typeof body !== "object") return;
-
-		// Only touch requests that already declare tools, so summarization and
-		// other tool-less calls stay untouched.
-		const tools = (body as { tools?: unknown }).tools;
-		if (!Array.isArray(tools)) return;
-
-		const already = tools.some(
-			(t) => t && typeof t === "object" && (t as { type?: string }).type === SERVER_TOOL.type,
-		);
-		if (already) return;
-
-		(body as { tools: unknown[] }).tools = [...tools, SERVER_TOOL];
-		return body;
+		return applyServerTools(event.payload, ctx.model, process.env);
 	});
 }
