@@ -15,8 +15,8 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	buildProfile,
 	canonicalize,
+	classifyBashCommand,
 	defaultWriteRoots,
-	isBrowserInvocation,
 	isWritable,
 	shellQuote,
 } from "./policy.ts";
@@ -39,10 +39,13 @@ export default function (pi: ExtensionAPI): void {
 		if (
 			process.platform === "darwin" &&
 			event.toolName === "bash" &&
-			typeof input.command === "string" &&
-			!isBrowserInvocation(input.command)
+			typeof input.command === "string"
 		) {
-			input.command = `/usr/bin/sandbox-exec -p ${shellQuote(buildProfile(roots))} /bin/bash -c ${shellQuote(input.command)}`;
+			const verdict = classifyBashCommand(input.command, roots, ctx.cwd);
+			if (verdict.kind === "blocked") return { block: true, reason: verdict.reason };
+			if (verdict.kind === "sandbox") {
+				input.command = `/usr/bin/sandbox-exec -p ${shellQuote(buildProfile(roots))} /bin/bash -c ${shellQuote(input.command)}`;
+			}
 		}
 	});
 }

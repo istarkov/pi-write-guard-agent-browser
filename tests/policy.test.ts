@@ -7,11 +7,13 @@ import { test } from "node:test";
 import {
 	buildProfile,
 	canonicalize,
+	classifyBashCommand,
 	defaultWriteRoots,
 	escapeProfilePath,
 	isBrowserInvocation,
 	isWritable,
 	shellQuote,
+	splitCommandSegments,
 } from "../extensions/write-guard/policy.ts";
 
 test("isWritable accepts a root and its children, rejects siblings", () => {
@@ -95,4 +97,78 @@ test("isWritable accepts a new file under a canonicalized root", () => {
 test("shellQuote wraps and escapes single quotes", () => {
 	assert.equal(shellQuote("plain"), "'plain'");
 	assert.equal(shellQuote("a'b"), "'a'\\''b'");
+});
+
+test("isBrowserInvocation catches wrapped and chained agent-browser calls", () => {
+	const cases = [
+		"agent-browser open https://x",
+		"  agent-browser   snapshot",
+		"cd /tmp && timeout 120 agent-browser --session s open https://x",
+		"cd /tmp && agent-browser open x",
+		"cd /tmp; agent-browser open x",
+		"timeout 120 agent-browser open x",
+		"timeout -s KILL 120 agent-browser open x",
+		"env FOO=1 agent-browser open x",
+		"FOO=1 agent-browser open x",
+		"npx agent-browser open x",
+		"npx --yes agent-browser@latest open x",
+		"bunx agent-browser open x",
+		"pnpx agent-browser open x",
+		"sudo agent-browser open x",
+		"nohup agent-browser open x",
+		"/Users/x/.nvm/versions/node/v24/bin/agent-browser open x",
+		"cd /tmp && agent-browser open x 2>&1 | tail -20",
+		"agent-browser open x &",
+		"echo started && agent-browser open x",
+	];
+	for (const command of cases) {
+		assert.equal(isBrowserInvocation(command), true, command);
+	}
+});
+
+test("isBrowserInvocation does not trust a substring or a non-browser head", () => {
+	const cases = [
+		"echo agent-browser",
+		"ls -la",
+		"",
+		"grep agent-browser log.txt",
+		"cat 'agent-browser'",
+		"npm install agent-browser",
+	];
+	for (const command of cases) {
+		assert.equal(isBrowserInvocation(command), false, command);
+	}
+});
+
+test("classifyBashCommand blocks mixing agent-browser with a writer", () => {
+	const verdict = classifyBashCommand("rm -rf /Users/x/keep && agent-browser open x");
+	assert.equal(verdict.kind, "blocked");
+	assert.match((verdict as { reason: string }).reason, /rm -rf/);
+
+	assert.equal(classifyBashCommand("agent-browser open x > /Users/x/keep/out").kind, "blocked");
+	assert.equal(classifyBashCommand("agent-browser open x > ~/Desktop/out").kind, "blocked");
+	assert.equal(classifyBashCommand("cd /tmp && echo $(rm -rf /Users/x) && agent-browser open x").kind, "blocked");
+	assert.equal(classifyBashCommand("node script.mjs && agent-browser open x").kind, "blocked");
+	assert.equal(classifyBashCommand("sed -i '' s/a/b/ f && agent-browser open x").kind, "blocked");
+	assert.equal(classifyBashCommand("sort -o f g && agent-browser open x").kind, "blocked");
+});
+
+test("classifyBashCommand stays outside when the pipe only reads or writes a root", () => {
+	const roots = [canonicalize(tmpdir())];
+	assert.equal(classifyBashCommand("agent-browser open x | jq .", roots).kind, "outside");
+	assert.equal(classifyBashCommand("agent-browser open x > /dev/null 2>&1", roots).kind, "outside");
+	assert.equal(
+		classifyBashCommand(`agent-browser open x > ${join(tmpdir(), "shot.json")}`, roots, tmpdir()).kind,
+		"outside",
+	);
+	assert.equal(classifyBashCommand("agent-browser open x > ./out.json", roots, tmpdir()).kind, "outside");
+	assert.equal(classifyBashCommand("ls -la", roots).kind, "sandbox");
+});
+
+test("splitCommandSegments keeps quoted control operators inside one segment", () => {
+	assert.deepEqual(splitCommandSegments("a && b; c | d"), ["a", "b", "c", "d"]);
+	assert.deepEqual(splitCommandSegments("echo 'a && b'"), ["echo 'a && b'"]);
+	assert.deepEqual(splitCommandSegments('echo "a; b" && c'), ['echo "a; b"', "c"]);
+	assert.deepEqual(splitCommandSegments("a 2>&1 &"), ["a 2>&1"]);
+	assert.deepEqual(splitCommandSegments("   "), []);
 });
