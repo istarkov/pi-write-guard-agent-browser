@@ -13,27 +13,46 @@
 	"bugs": {
 		"url": "https://github.com/istarkov/pi-write-guard-agent-browser/issues"
 	},
-	"keywords": ["pi-package", "pi", "extension", "sandbox", "seatbelt", "macos"],
+	"keywords": [
+		"pi-package",
+		"pi",
+		"extension",
+		"sandbox",
+		"seatbelt",
+		"macos"
+	],
 	"engines": {
 		"node": ">=22.19.0"
 	},
-	"files": ["extensions/write-guard", "extensions/openrouter-web-search", "README.md", "LICENSE"],
+	"files": [
+		"extensions/write-guard",
+		"extensions/openrouter-web-search",
+		"README.md",
+		"LICENSE",
+		"extensions/image-previews"
+	],
 	"pi": {
 		"extensions": [
 			"./extensions/write-guard/index.ts",
-			"./extensions/openrouter-web-search/index.ts"
+			"./extensions/openrouter-web-search/index.ts",
+			"./extensions/image-previews/index.ts"
 		]
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": "*"
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": ">=1.4.0 <2"
 	},
 	"scripts": {
 		"test": "node --experimental-strip-types --test tests/*.test.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@earendil-works/pi-coding-agent": "1.4.0",
+		"@earendil-works/pi-coding-agent": "1.5.0",
 		"@types/node": "^26.6.6",
-		"typescript": "^7.0.2"
+		"typescript": "^7.0.2",
+		"@earendil-works/pi-tui": "1.5.0"
+	},
+	"dependencies": {
+		"jimp": "^1.6.0"
 	}
 }

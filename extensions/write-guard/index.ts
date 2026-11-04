@@ -1,27 +1,20 @@
-/**
- * write-guard: read anywhere, write only inside a few roots.
- *
- * - `bash` runs under macOS `sandbox-exec`, so the kernel denies writes outside
- *   the roots even from scripts and interpreters (no shell-string parsing).
- * - `write` / `edit` are path-checked because they never go through the shell.
- *
- * A deliberate exception: a plain `agent-browser` invocation runs outside the
- * sandbox, because Chromium cannot initialize its own sandbox nested in ours.
- */
-
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import {
-	buildProfile,
-	canonicalize,
-	classifyBashCommand,
-	defaultWriteRoots,
-	isWritable,
-	shellQuote,
-} from "./policy.ts";
+import { buildProfile, canonicalize, defaultWriteRoots, isWritable, shellQuote } from "./policy.ts";
 
 export default function (pi: ExtensionAPI): void {
+	const namespace = `pi-${process.pid}-${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+	const config = fileURLToPath(new URL("./agent-browser.json", import.meta.url));
+	const browserEnv = [
+		`AGENT_BROWSER_CONFIG=${config}`,
+		`AGENT_BROWSER_NAMESPACE=${namespace}`,
+		"AGENT_BROWSER_IDLE_TIMEOUT_MS=300000",
+	];
+	let lastCwd: string | undefined;
+
 	pi.on("tool_call", (event, ctx) => {
 		const roots = defaultWriteRoots({ cwd: ctx.cwd });
 		const input = event.input as { path?: unknown; command?: unknown };
@@ -36,16 +29,24 @@ export default function (pi: ExtensionAPI): void {
 			}
 		}
 
-		if (
-			process.platform === "darwin" &&
-			event.toolName === "bash" &&
-			typeof input.command === "string"
-		) {
-			const verdict = classifyBashCommand(input.command, roots, ctx.cwd);
-			if (verdict.kind === "blocked") return { block: true, reason: verdict.reason };
-			if (verdict.kind === "sandbox") {
-				input.command = `/usr/bin/sandbox-exec -p ${shellQuote(buildProfile(roots))} /bin/bash -c ${shellQuote(input.command)}`;
-			}
+		if (process.platform === "darwin" && event.toolName === "bash" && typeof input.command === "string") {
+			lastCwd = ctx.cwd;
+			input.command = [
+				"/usr/bin/sandbox-exec", "-p", buildProfile(roots),
+				"/usr/bin/env", ...browserEnv, "/bin/bash", "-c", input.command,
+			].map(shellQuote).join(" ");
+		}
+	});
+
+	pi.on("session_shutdown", async () => {
+		if (!lastCwd) return;
+		try {
+			await pi.exec("/usr/bin/sandbox-exec", [
+				"-p", buildProfile(defaultWriteRoots({ cwd: lastCwd })),
+				"/usr/bin/env", ...browserEnv, "agent-browser", "close", "--all",
+			], { cwd: lastCwd, timeout: 10000 });
+		} catch {
+			// The idle timeout also releases browsers when Pi cannot shut down cleanly.
 		}
 	});
 }
