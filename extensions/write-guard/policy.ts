@@ -78,16 +78,6 @@ export function isWritable(roots: readonly string[], path: string): boolean {
 	return roots.some((root) => path === root || path.startsWith(`${root}/`));
 }
 
-/**
- * agent-browser launches Chromium, and macOS refuses to initialize a sandbox
- * inside ours (`forbidden-sandbox-reinit`), so a plain agent-browser call is
- * allowed to run outside. This is an accident guard, not a security boundary.
- */
-export function isBrowserInvocation(command: string): boolean {
-	const [first, second] = command.trim().split(/\s+/);
-	return first === "agent-browser" || (first === "npx" && second === "agent-browser");
-}
-
 /** POSIX single-quote a value for safe embedding in a shell command. */
 export function shellQuote(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;

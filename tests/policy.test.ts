@@ -9,7 +9,6 @@ import {
 	canonicalize,
 	defaultWriteRoots,
 	escapeProfilePath,
-	isBrowserInvocation,
 	isWritable,
 	shellQuote,
 } from "../extensions/write-guard/policy.ts";
@@ -22,15 +21,6 @@ test("isWritable accepts a root and its children, rejects siblings", () => {
 	assert.equal(isWritable(roots, "/b/c/d"), true);
 	assert.equal(isWritable(roots, "/b"), false);
 	assert.equal(isWritable(roots, "/b/cd"), false);
-});
-
-test("isBrowserInvocation matches plain agent-browser and npx, nothing else", () => {
-	assert.equal(isBrowserInvocation("agent-browser open https://x"), true);
-	assert.equal(isBrowserInvocation("  agent-browser   snapshot"), true);
-	assert.equal(isBrowserInvocation("npx agent-browser open x"), true);
-	assert.equal(isBrowserInvocation("echo agent-browser"), false);
-	assert.equal(isBrowserInvocation("ls -la"), false);
-	assert.equal(isBrowserInvocation(""), false);
 });
 
 test("buildProfile lists every root as a write subpath and denies writes overall", () => {
